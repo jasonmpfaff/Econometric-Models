@@ -1,0 +1,286 @@
+##Econometric models for forecasting event based binary derivatives##
+
+###############ARIMA###############
+
+install.packages("forecast")
+install.packages("rlang")
+library(rlang)
+library(forecast)
+install.packages("ggplot2")
+library(ggplot2)
+
+##load column of historical values##
+ecoarima<-scan("claims.csv")
+ecotimeseries<-ts(ecoarima)
+plot(ecotimeseries, main="Econometric FORECAST", ylab="TOTAL Volume")
+ecotimeseriesarima<-arima(ecotimeseries, order=c(3,0,3))
+ecotimeseriesarima
+autoplot(ecotimeseriesarima)
+
+##change freq depending on target. NFP =12 and weekly jobless = 52
+ecotimeseries2<-ts(ecoarima, frequency=52)
+dec<-decompose(ecotimeseries2)
+plot(dec)
+
+head(ecoarima)
+
+##change h value based on how many forward periods are intended to be forecasted##
+ecotimeseriesforecasts<-forecast(ecotimeseriesarima, h=5)
+ecotimeseriesforecasts
+plot(ecotimeseriesforecasts)
+ecodiff1<-diff(ecotimeseries, differences=3)
+acf(ecodiff1, lag.max=100, main="Lag of model differences")
+acf(ecodiff1, lag.max=100, plot=FALSE)
+plot.ts(ecodiff1, main="Plot of Differeneces")
+plot.forecast(ecotimeseriesforecasts, xlab='Time', main="Econometric Forecast", ylab="Total Volume",col="orange", shadecols =c("red", "orange"))
+autoplot(ecotimeseriesforecasts, shadecols =c("red", "orange"))
+
+##HoltWintersExponentialSmoothing##
+REVHW<-scan("claims.csv")
+REVHWtimeseries<-ts(REVHW, start=c(1/1967), frequency=52)
+REVHWforecast<-HoltWinters(REVHWtimeseries, gamma=TRUE)
+REVHWforecast
+REVHWcoeffs<-coefficients(REVHWforecast)
+plot(decompose(REVHWtimeseries), xlab="Revenue")
+plot(forecast(REVHWforecast,12), main="Revenue", xaxt="n", col="red", ylab="Revenue")
+points(REVHWtimeseries, col="blue", bg="red", pch=23)
+final<-forecast(REVHWforecast, h=10)
+plot(final)
+autoplot(final, shadecols=c("red", "orange"))
+final
+
+head(REVHW)
+
+fit<-nnetar(REVHW)
+finalfit<-forecast(fit, h=5)
+finalfit
+plot(finalfit)
+plot(forecast(finalfit))
+
+##prophet##
+#install.packages("prophet")
+#install.packages("dplyr")
+#library(prophet)
+#library(dplyr)
+
+#df <- read.csv("WJC_prophet.csv")
+#%>%
+#mutate(y = log(y))
+#head(df)
+#m <- prophet(df)
+#head(m)
+#future <- make_future_dataframe(m, periods = 1)
+#tail(future)
+#forecast <- predict(m, future)
+#tail(forecast[c('ds', 'yhat', 'yhat_lower', 'yhat_upper')])
+#forecast
+#tail(forecast)
+#plot(m, forecast)
+#prophet_plot_components(m, forecast)
+
+
+##Monte Carlo Model##
+install.packages("mc2d")
+library("mc2d")
+#for the actuals vector input actuals from previous months in the same position in a term.  
+#We still need to determine weights for more recent months.
+ecoactuals<- c(238,236,233,235,255,245,238,241,244,250,248,247,233)
+#cacl mean and sd for the normalized actuals
+ecodropvariance<-sd(ecoactuals)
+ecodropmean<-mean(ecoactuals)
+#run monte carlo simulations
+ecodrops <- mcstoc(rnorm,type="VU",mean=ecodropmean,sd=ecodropvariance)
+ecodrops2 <- mc(ecodrops)
+ecodrops3<- mcstoc(rnorm, type="U", mean=ecodropmean, sd=ecodropvariance)
+#print the output
+print(ecodrops2,digits=2)
+
+ecohist1<-hist(ecodrops2,labels=TRUE, breaks=30, xlab="Simulation results", col="red")
+plot(ecodrops2,xlab="Simulation results", ylab="frequency", col="red")
+plot(ecodrops3, xlab="Simulation results", ylab="frequency")
+summary(ecodrops2)
+summary(ecodrops3)
+ecodropdensity <- density(ecoactuals)
+plot(ecodropdensity, xlab ="Density of Simulation results", main = "")
+polygon(ecodropdensity, col="red", border="blue", xlab="", ylab="")
+plot(ecoactuals, col="blue")
+time<-c(1,2,3,4,5,6,7,8,9,10,11,12, 13)
+ecoactualmodel<-lm(ecoactuals~time)
+abline(ecoactualmodel, par(xpd=FALSE))
+summary(ecoactualmodel)
+fitted(ecoactualmodel)
+predict(ecoactualmodel, interval="predict")
+plot(ecoactualmodel)
+
+
+
+install.packages("forecast")
+library(forecast)
+install.packages("ggplot2")
+library(ggplot2)
+
+ICEarima<-scan("claims.csv")
+ICEtimeseries<-ts(ICEarima, frequency=52)
+plot(ICEtimeseries, main="ICE EDU FORECAST", ylab="TOTAL REVENUE")
+ICEtimeseriesarima<-auto.arima(ICEtimeseries)
+ICEtimeseriesarima
+autoplot(ICEtimeseriesarima)
+
+dec<-decompose(ICEtimeseries)
+plot(dec)
+#library("forecast")
+ICEtimeseriesforecasts<-forecast(ICEtimeseriesarima, h=9)
+ICEtimeseriesforecasts
+plot(ICEtimeseriesforecasts)
+ICEdiff1<-diff(ICEtimeseries, differences=3)
+acf(ICEdiff1, lag.max=20, main="Lag of model differences")
+acf(ICEdiff1, lag.max=20, plot=FALSE)
+plot.ts(ICEdiff1, main="Plot of Differeneces")
+plot.forecast(ICEtimeseriesforecasts, xlab='Revenue Forecast by Day', main="DAILY REVENUE FORECAST", ylab="Total REVENUE",col="orange", shadecols =c("red", "orange"))
+autoplot(ICEtimeseriesforecasts, shadecols =c("red", "orange"))
+
+
+##prophet##
+
+
+install.packages("prophet")
+install.packages("dplyr")
+library(prophet)
+library(dplyr)
+
+df <- read.csv("pt.csv")
+#%>%
+#mutate(y = log(y))
+m <- prophet(df)
+
+future <- make_future_dataframe(m, periods = 52)
+tail(future)
+
+forecast <- predict(m, future)
+tail(forecast[c('ds', 'yhat', 'yhat_lower', 'yhat_upper')])
+
+plot(m, forecast)
+prophet_plot_components(m, forecast)
+
+
+
+install.packages("caret")
+library("caret")
+
+
+marketdata<-read.csv("Japan_model.csv")
+markdata<-data.frame(marketdata)
+marketmodel<-lm(CPI~Retail+PPI, data=marketdata)
+marketcoeffs<-coefficients(marketmodel)
+marketcoeffs
+summary(marketcoeffs)
+summary(marketmodel)
+
+plot(CPI~PPI, marketdata)
+abline(lm(CPI~PPI, marketdata),par(xpd=FALSE))
+plot(CPI~Retail, marketdata)
+abline(lm(CPI~Retail, marketdata),par(xpd=FALSE))
+
+##multivariate regression
+
+#enter actual value for the lines below
+Retail<-1.0002
+PPI<-1.007
+Retailweight<-marketcoeffs[1]+marketcoeffs[2]*Retail
+PPIweight<-marketcoeffs[3]*PPI
+
+marketpredict<-Retailweight+PPIweight
+
+Retailweight
+PPIweight
+
+marketpredict
+
+##bayesian ridge regression
+
+bridgemodel<-train(CPI ~ Retail+PPI,data=marketdata, method="bridge")
+bridgemodel
+newdata<-read.csv("Japan_model.csv")
+bridgepredictions<-predict(bridgemodel, newdata=newdata, type="raw")
+
+data.frame(bridgepredictions,newdata)
+
+plot(bridgepredictions)
+
+
+
+install.packages("forecast")
+install.packages("rlang")
+library(rlang)
+library(forecast)
+install.packages("ggplot2")
+library(ggplot2)
+
+model<-scan("claims.csv")
+
+#NNET
+L <- BoxCox.lambda(ts(model, frequency=52), method="loglik")
+fit.nn <- nnetar(ts(model, frequency=52), lambda=L, size=3)
+oilcast<-forecast(fit.nn, h=5, lambda=L)
+plot(oilcast)
+oilcast
+
+##ARIMA
+oil_arima<-scan("oilnnet.csv")
+oil_timeseries<-ts(oil_arima)
+plot(oil_timeseries, main="Oil FORECAST", ylab="TOTAL Volume")
+oil_timeseries_arima<-arima(oil_timeseries, order=c(3,0,3))
+oil_timeseries_arima
+autoplot(oil_timeseries_arima)
+oil_timeseries_forecasts<-forecast(oil_timeseries_arima, h=5)
+oil_timeseries_forecasts
+
+
+##Holt-Winters
+Oil_Model<-scan("oilnnet.csv")
+Price_of_Oil<-ts(Oil_Model, start=c(8/23/2000), frequency=260)
+Oil_Price_forecast<-HoltWinters(Price_of_Oil, gamma=TRUE)
+Oil_Price_forecast
+Oil_coeffs<-coefficients(Oil_Price_forecast)
+plot(decompose(Price_of_Oil), xlab="Revenue")
+plot(forecast(Oil_Price_forecast,12), main="Revenue", xaxt="n", col="red", ylab="Revenue")
+points(Price_of_Oil, col="blue", bg="red", pch=23)
+final<-forecast(Oil_Price_forecast, h=5)
+plot(final)
+autoplot(final, shadecols=c("red", "orange"))
+final
+
+install.packages("mc2d")
+library("mc2d")
+#for the actuals vector input actuals from previous months in the same position in a term.  
+#We still need to determine weights for more recent months.
+ecoactuals<- c(250, 248, 234, 245, 241, 244, 232, 235, 236, 298, 282, 259)
+#cacl mean and sd for the normalized actuals
+ecodropvariance<-sd(ecoactuals)
+ecodropmean<-mean(ecoactuals)
+#run monte carlo simulations
+ecodrops <- mcstoc(rnorm,type="VU",mean=ecodropmean,sd=ecodropvariance)
+ecodrops2 <- mc(ecodrops)
+ecodrops3<- mcstoc(rnorm, type="U", mean=ecodropmean, sd=ecodropvariance)
+#print the output
+print(ecodrops2,digits=2)
+
+ecohist1<-hist(ecodrops2,labels=TRUE, breaks=30, xlab="Simulation results", col="red")
+plot(ecodrops2,xlab="Simulation results", ylab="frequency", col="red")
+plot(ecodrops3, xlab="Simulation results", ylab="frequency")
+summary(ecodrops2)
+summary(ecodrops3)
+ecodropdensity <- density(ecoactuals)
+plot(ecodropdensity, xlab ="Density of Simulation results", main = "")
+polygon(ecodropdensity, col="red", border="blue", xlab="", ylab="")
+plot(ecoactuals, col="blue")
+
+
+
+time<-c(1,2,3)
+ecoactualmodel<-lm(ecoactuals~time)
+abline(ecoactualmodel, par(xpd=FALSE))
+summary(ecoactualmodel)
+fitted(ecoactualmodel)
+predict(ecoactualmodel, interval="predict")
+plot(ecoactualmodel)
